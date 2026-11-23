@@ -7,10 +7,22 @@ on:
     branches: [ "**" ]
 
 jobs:
-  analisis-seguridad:
-    name: Pruebas de Seguridad (SAST, SCA, IaC)
+  # ETAPA 1: Build (Construcción de la aplicación / contenedor)
+  build:
+    name: 1. Build (Docker)
     runs-on: ubuntu-latest
+    steps:
+      - name: Descargar código
+        uses: actions/checkout@v4
 
+      - name: Construir imagen Docker de prueba
+        run: docker build -t juice-shop-test .
+
+  # ETAPA 2: Análisis de Seguridad (SAST, SCA, IaC)
+  analisis-seguridad:
+    name: 2. Seguridad (SAST, SCA, IaC)
+    needs: build
+    runs-on: ubuntu-latest
     steps:
       - name: Descargar código
         uses: actions/checkout@v4
@@ -30,7 +42,7 @@ jobs:
         run: |
           docker run --rm -v "${{ github.workspace }}:/src" bridgecrew/checkov -d /src --framework dockerfile -o json > checkov-report.json
 
-      - name: Guardar informes generados
+      - name: Subir informes generados
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -39,3 +51,12 @@ jobs:
             semgrep-report.json
             trivy-sca-report.json
             checkov-report.json
+
+  # ETAPA 3: Producción (BLOQUEADA si la etapa 2 falla por el Quality Gate)
+  produccion:
+    name: 3. Despliegue a Producción
+    needs: analisis-seguridad
+    runs-on: ubuntu-latest
+    steps:
+      - name: Desplegar versión aprobada
+        run: echo "Todos los quality gates superados. Desplegando en producción..."
