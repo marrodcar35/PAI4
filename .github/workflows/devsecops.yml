@@ -1,0 +1,40 @@
+name: Pipeline DevSecOps
+
+on:
+  push:
+    branches: [ "**" ]
+  pull_request:
+    branches: [ "**" ]
+
+jobs:
+  analisis-seguridad:
+    name: Pruebas de Seguridad (SAST, SCA, IaC)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar código
+        uses: actions/checkout@v4
+
+      - name: SAST - Semgrep (Modo Aviso)
+        continue-on-error: true
+        run: |
+          docker run --rm -v "${{ github.workspace }}:/src" semgrep/semgrep semgrep scan --config=auto --json -o semgrep-report.json --error /src
+
+      - name: SCA - Trivy Dependencias (Modo Aviso)
+        continue-on-error: true
+        run: |
+          docker run --rm -v "${{ github.workspace }}:/src" aquasec/trivy fs --scanners vuln --severity CRITICAL,HIGH --exit-code 1 --format json -o trivy-sca-report.json /src
+
+      - name: IaC - Checkov (Quality Gate Bloqueante)
+        run: |
+          docker run --rm -v "${{ github.workspace }}:/src" bridgecrew/checkov -d /src --framework dockerfile -o json > checkov-report.json
+
+      - name: Guardar informes generados
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: informes-seguridad
+          path: |
+            semgrep-report.json
+            trivy-sca-report.json
+            checkov-report.json
