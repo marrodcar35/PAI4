@@ -23,7 +23,8 @@ jobs:
       - name: SCA - Trivy Dependencias (Modo Aviso)
         continue-on-error: true
         run: |
-          docker run --rm -v "${{ github.workspace }}:/src" aquasec/trivy fs --scanners vuln --severity CRITICAL,HIGH --exit-code 1 --format json -o /src/trivy-sca-report.json /src
+          npm install --package-lock-only --ignore-scripts
+          docker run --rm -v "${{ github.workspace }}:/src" aquasec/trivy fs --scanners vuln --severity CRITICAL,HIGH,MEDIUM --exit-code 1 --format json -o /src/trivy-sca-report.json /src
 
       - name: IaC - Checkov (Quality Gate Bloqueante)
         run: |
