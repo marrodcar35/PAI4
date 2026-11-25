@@ -32,11 +32,11 @@ jobs:
         run: |
           docker run --rm -v "${{ github.workspace }}:/src" semgrep/semgrep semgrep scan --config=auto --json -o /src/semgrep-report.json --error /src
 
-      - name: SCA - Trivy Dependencias (Modo Aviso)
+      - name: SCA - OWASP Dependency-Check (Modo Aviso)
         continue-on-error: true
         run: |
           npm install --package-lock-only --ignore-scripts
-          docker run --rm -v "${{ github.workspace }}:/src" aquasec/trivy fs --scanners vuln --severity CRITICAL,HIGH,MEDIUM --exit-code 1 --format json -o /src/trivy-sca-report.json /src
+          docker run --rm -v "${{ github.workspace }}:/src" owasp/dependency-check --scan /src/package-lock.json --format JSON --out /src/dependency-check-report.json --failOnCVSS 7
 
       - name: IaC - Checkov (Quality Gate Bloqueante)
         run: |
@@ -49,7 +49,7 @@ jobs:
           name: informes-seguridad
           path: |
             semgrep-report.json
-            trivy-sca-report.json
+            dependency-check-report.json
             checkov-report.json
 
   # ETAPA 3: Producción (BLOQUEADA si la etapa 2 falla por el Quality Gate)
